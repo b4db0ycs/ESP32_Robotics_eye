@@ -2,6 +2,8 @@
 
 In questa repo si affrontano due argomenti: l'invio e la ricezione di dati dall'ESP32. Questa repo riguarda la ricezione di dati da un sensore IR e la visualizzazione di occhi robotici su un display OLED 128x64 utilizzando l'ESP32.
 
+Nel mio codice sono stati aggiunti gli occhi "tristi" dopo un intervallo di 10 minuti senza nessun movimento rilevato dal sul sensore IR e relativo ritorno alla normalità al rilevamento.
+
 WATCH FULL TUTORIAL VIDEO --> https://youtu.be/Oq6sax94xng
 
 Thank's to @engrpakistan for this guide.
