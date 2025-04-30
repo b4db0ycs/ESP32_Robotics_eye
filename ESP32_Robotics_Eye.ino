@@ -24,7 +24,7 @@ EyeState eyeState = EYE_IDLE;
 
 int eyeOffset = 0;
 int eyeDirection = 1;
-const int maxOffset = 13;
+const int maxOffset = 15;
 unsigned long movementMillis = 0;
 const unsigned long movementInterval = 325;
 
@@ -58,49 +58,34 @@ void loop() {
         centerWaitMillis = currentMillis;
       }
 
-      if (eyeState == EYE_OPEN) {
-        eye_open();
-      } else if (eyeState == EYE_CLOSE) {
-        eye_close();
-      } else if (eyeState == EYE_SAD) {
-        eye_sad();
-      } else if (eyeState == EYE_BORED) {
-        eye_bored();
-      }
+      if (eyeState == EYE_OPEN) eye_open();
+      else if (eyeState == EYE_CLOSE) eye_close();
+      else if (eyeState == EYE_SAD) eye_sad();
+      else if (eyeState == EYE_BORED) eye_bored();
     }
   } else {
     if (currentMillis - centerWaitMillis >= centerPauseDuration) {
       isWaitingAtCenter = false;
     } else {
-      if (eyeState == EYE_OPEN) {
-        eye_open(true);
-      } else if (eyeState == EYE_CLOSE) {
-        eye_close(true);
-      } else if (eyeState == EYE_SAD) {
-        eye_sad();
-      }
+      if (eyeState == EYE_OPEN) eye_open(true);
+      else if (eyeState == EYE_CLOSE) eye_close(true);
+      else if (eyeState == EYE_SAD) eye_sad();
     }
   }
 
   if (Read == 0) {
     lastMotionMillis = currentMillis;
-    if (eyeState == EYE_SAD) {
-      eye_up();
-      eyeState = EYE_IDLE;
-    } else {
-      eye_up();
-      eyeState = EYE_IDLE;
-    }
+    eye_up();
+    eyeState = EYE_IDLE;
     previousMillis = currentMillis;
     return;
   }
 
   if (currentMillis - lastMotionMillis >= sadDelay) {
-    if (eyeState != EYE_BORED && eyeState != EYE_SAD) {
+    if (eyeState == EYE_IDLE || eyeState == EYE_CLOSE || eyeState == EYE_OPEN) {
       eyeState = EYE_BORED;
       boredMillis = currentMillis;
     }
-    return;
   }
 
   switch (eyeState) {
@@ -118,7 +103,7 @@ void loop() {
 
     case EYE_OPEN:
       if (currentMillis - previousMillis >= (isWaitingAtCenter ? interval2_center : interval2)) {
-        eyeState = EYE_IDLE;
+        eyeState = EYE_CLOSE;
         previousMillis = currentMillis;
       }
       break;
@@ -133,6 +118,9 @@ void loop() {
       break;
   }
 }
+
+// Le funzioni eye_open, eye_close, eye_up, eye_sad, eye_bored rimangono invariate
+
 
 void eye_open(bool centered) {
   u8g2.clearBuffer();
@@ -153,7 +141,6 @@ void eye_open(bool centered) {
   } else {
     int shrinkAmount = 4;
     bool goingRight = eyeDirection > 0;
-
     if (goingRight) {
       u8g2.drawBox(leftX, 17 + shrinkAmount, eyeWidth, eyeHeight - shrinkAmount);
       u8g2.drawBox(rightX, 17, eyeWidth, eyeHeight);
