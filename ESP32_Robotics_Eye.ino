@@ -4,6 +4,8 @@
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 int ir = 34;
 
+void drawEyes(bool centered = false);
+
 unsigned long previousMillis = 0;
 const long interval1 = 400;
 const long interval2 = 180;
@@ -11,15 +13,10 @@ const long interval1_center = 650;
 const long interval2_center = 400;
 
 unsigned long lastMotionMillis = 0;
-const unsigned long sadDelay = 600000;
-const unsigned long boredDelay = 100000;
+const unsigned long sadDelay = 300000;
+const unsigned long boredDelay = 400000;
 
-enum EyeState { EYE_OPEN, EYE_CLOSE, EYE_IDLE, EYE_BORED, EYE_SAD };
-void eye_up();
-void eye_open(bool centered = false);
-void eye_close(bool centered = false);
-void eye_sad();
-void eye_bored();
+enum EyeState { EYE_OPEN, EYE_CLOSE, EYE_IDLE, EYE_BORED, EYE_TRANSITION, EYE_SAD };
 EyeState eyeState = EYE_IDLE;
 
 int eyeOffset = 0;
@@ -32,6 +29,11 @@ bool isWaitingAtCenter = false;
 unsigned long centerWaitMillis = 0;
 const unsigned long centerPauseDuration = 8000;
 
+unsigned long transitionStartMillis = 0;
+const unsigned long transitionDuration = 1500;
+unsigned long lastTransitionUpdate = 0;
+const unsigned long transitionFrameInterval = 50;
+
 unsigned long boredMillis = 0;
 
 void setup() {
@@ -41,8 +43,8 @@ void setup() {
 }
 
 void loop() {
-  int Read = digitalRead(ir);
   unsigned long currentMillis = millis();
+  int Read = digitalRead(ir);
 
   if (!isWaitingAtCenter) {
     if (currentMillis - movementMillis >= movementInterval) {
@@ -58,18 +60,13 @@ void loop() {
         centerWaitMillis = currentMillis;
       }
 
-      if (eyeState == EYE_OPEN) eye_open();
-      else if (eyeState == EYE_CLOSE) eye_close();
-      else if (eyeState == EYE_SAD) eye_sad();
-      else if (eyeState == EYE_BORED) eye_bored();
+      drawEyes();
     }
   } else {
     if (currentMillis - centerWaitMillis >= centerPauseDuration) {
       isWaitingAtCenter = false;
     } else {
-      if (eyeState == EYE_OPEN) eye_open(true);
-      else if (eyeState == EYE_CLOSE) eye_close(true);
-      else if (eyeState == EYE_SAD) eye_sad();
+      drawEyes(true);
     }
   }
 
@@ -110,6 +107,19 @@ void loop() {
 
     case EYE_BORED:
       if (currentMillis - boredMillis >= boredDelay) {
+        eyeState = EYE_TRANSITION;
+        transitionStartMillis = currentMillis;
+        lastTransitionUpdate = 0;
+      }
+      break;
+
+    case EYE_TRANSITION:
+      if (currentMillis - lastTransitionUpdate >= transitionFrameInterval) {
+        float progress = (currentMillis - transitionStartMillis) / (float)transitionDuration;
+        eye_transition(progress);
+        lastTransitionUpdate = currentMillis;
+      }
+      if (currentMillis - transitionStartMillis >= transitionDuration) {
         eyeState = EYE_SAD;
       }
       break;
@@ -119,8 +129,15 @@ void loop() {
   }
 }
 
-// Le funzioni eye_open, eye_close, eye_up, eye_sad, eye_bored rimangono invariate
-
+void drawEyes(bool centered) {
+  switch (eyeState) {
+    case EYE_OPEN: eye_open(centered); break;
+    case EYE_CLOSE: eye_close(centered); break;
+    case EYE_BORED: eye_bored(); break;
+    case EYE_SAD: eye_sad(); break;
+    default: break;
+  }
+}
 
 void eye_open(bool centered) {
   u8g2.clearBuffer();
@@ -226,5 +243,20 @@ void eye_bored() {
   u8g2.drawBox(22 + eyeOffset, 35, 30, 15);
   u8g2.drawFilledEllipse(81 + eyeOffset, 45, 12, 8);
   u8g2.drawFilledEllipse(37 + eyeOffset, 45, 12, 8);
+  u8g2.sendBuffer();
+}
+
+void eye_transition(float progress) {
+  u8g2.clearBuffer();
+  u8g2.setFontMode(1);
+  u8g2.setBitmapMode(1);
+  int eyeTop = 35 - (int)(5 * progress);
+  int irisSize = 12 + (int)(2 * progress);
+  u8g2.drawBox(66 + eyeOffset, eyeTop, 30, 15 + (int)(3 * progress));
+  u8g2.drawBox(22 + eyeOffset, eyeTop, 30, 15 + (int)(3 * progress));
+  u8g2.drawFilledEllipse(81 + eyeOffset, eyeTop + 10, irisSize, 8 + (int)(1 * progress));
+  u8g2.drawFilledEllipse(37 + eyeOffset, eyeTop + 10, irisSize, 8 + (int)(1 * progress));
+  u8g2.drawLine(22 + eyeOffset, eyeTop - 5, 36 + eyeOffset, eyeTop - (int)(5 * progress));
+  u8g2.drawLine(96 + eyeOffset, eyeTop - 5, 82 + eyeOffset, eyeTop - (int)(5 * progress));
   u8g2.sendBuffer();
 }
